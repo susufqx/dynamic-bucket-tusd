@@ -4,11 +4,11 @@
 // system. For example, to use the HTTP-based hook system:
 //
 //	import (
-//		"github.com/tus/tusd/v2/pkg/handler"
-//		"github.com/tus/tusd/v2/pkg/hooks"
-//		"github.com/tus/tusd/v2/pkg/hooks/http"
+//		"github.com/susufqx/dynamic-bucket-tusd/pkg/handler"
+//		"github.com/susufqx/dynamic-bucket-tusd/pkg/hooks"
+//		"github.com/susufqx/dynamic-bucket-tusd/pkg/hooks/http"
 //	)
-//	config := handler.Config{}
+//	config := models.Config{}
 //	hookHandler := http.HttpHook{
 //		Endpoint: "https://example.com"
 //	}
@@ -21,7 +21,9 @@ import (
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/tus/tusd/v2/pkg/handler"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/config"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/handler"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/models"
 	"golang.org/x/exp/slices"
 	"golang.org/x/exp/slog"
 )
@@ -46,7 +48,7 @@ type HookRequest struct {
 	// Type is the name of the hook.
 	Type HookType
 	// Event contains the involved upload and causing HTTP request.
-	Event handler.HookEvent
+	Event models.HookEvent
 }
 
 // HookResponse is the response after a hook is executed.
@@ -60,7 +62,7 @@ type HookResponse struct {
 	// Example usages: Send an error to the client if RejectUpload/StopUpload are
 	// set in the pre-create/post-receive hook. Send more information to the client
 	// in the pre-finish hook.
-	HTTPResponse handler.HTTPResponse
+	HTTPResponse models.HTTPResponse
 
 	// RejectUpload will cause the upload to be rejected and not be created during
 	// POST request. This value is only respected for pre-create hooks. For other hooks,
@@ -69,11 +71,11 @@ type HookResponse struct {
 	RejectUpload bool
 
 	// ChangeFileInfo can be set to change selected properties of an upload before
-	// it has been created. See the handler.FileInfoChanges type for more details.
+	// it has been created. See the models.FileInfoChanges type for more details.
 	// Changes are applied on a per-property basis, meaning that specifying just
 	// one property leaves all others unchanged.
 	// This value is only respected for pre-create hooks.
-	ChangeFileInfo handler.FileInfoChanges
+	ChangeFileInfo models.FileInfoChanges
 
 	// StopUpload will cause the upload to be stopped during a PATCH request.
 	// This value is only respected for post-receive hooks. For other hooks,
@@ -96,10 +98,10 @@ const (
 // AvailableHooks is a slice of all hooks that are implemented by tusd.
 var AvailableHooks []HookType = []HookType{HookPreCreate, HookPostCreate, HookPostReceive, HookPostTerminate, HookPostFinish, HookPreFinish}
 
-func preCreateCallback(event handler.HookEvent, hookHandler HookHandler) (handler.HTTPResponse, handler.FileInfoChanges, error) {
+func preCreateCallback(event models.HookEvent, hookHandler HookHandler) (models.HTTPResponse, models.FileInfoChanges, error) {
 	ok, hookRes, err := invokeHookSync(HookPreCreate, event, hookHandler)
 	if !ok || err != nil {
-		return handler.HTTPResponse{}, handler.FileInfoChanges{}, err
+		return models.HTTPResponse{}, models.FileInfoChanges{}, err
 	}
 
 	httpRes := hookRes.HTTPResponse
@@ -107,28 +109,28 @@ func preCreateCallback(event handler.HookEvent, hookHandler HookHandler) (handle
 	// If the hook response includes the instruction to reject the upload, reuse the error code
 	// and message from ErrUploadRejectedByServer, but also include custom HTTP response values.
 	if hookRes.RejectUpload {
-		err := handler.ErrUploadRejectedByServer
+		err := models.ErrUploadRejectedByServer
 		err.HTTPResponse = err.HTTPResponse.MergeWith(httpRes)
 
-		return handler.HTTPResponse{}, handler.FileInfoChanges{}, err
+		return models.HTTPResponse{}, models.FileInfoChanges{}, err
 	}
 
-	// Pass any changes regarding file info from the hook to the handler.
+	// Pass any changes regarding file info from the hook to the models.
 	changes := hookRes.ChangeFileInfo
 	return httpRes, changes, nil
 }
 
-func preFinishCallback(event handler.HookEvent, hookHandler HookHandler) (handler.HTTPResponse, error) {
+func preFinishCallback(event models.HookEvent, hookHandler HookHandler) (models.HTTPResponse, error) {
 	ok, hookRes, err := invokeHookSync(HookPreFinish, event, hookHandler)
 	if !ok || err != nil {
-		return handler.HTTPResponse{}, err
+		return models.HTTPResponse{}, err
 	}
 
 	httpRes := hookRes.HTTPResponse
 	return httpRes, nil
 }
 
-func postReceiveCallback(event handler.HookEvent, hookHandler HookHandler) {
+func postReceiveCallback(event models.HookEvent, hookHandler HookHandler) {
 	ok, hookRes, _ := invokeHookSync(HookPostReceive, event, hookHandler)
 	// invokeHookSync already logs the error, if any occurs. So by checking `ok`, we can ensure
 	// that the hook finished successfully
@@ -174,7 +176,7 @@ func SetupHookMetrics() {
 	MetricsHookInvocationsTotal.WithLabelValues(string(HookPreFinish)).Add(0)
 }
 
-func invokeHookAsync(typ HookType, event handler.HookEvent, hookHandler HookHandler) {
+func invokeHookAsync(typ HookType, event models.HookEvent, hookHandler HookHandler) {
 	go func() {
 		// Error handling is taken care by the function.
 		_, _, _ = invokeHookSync(typ, event, hookHandler)
@@ -187,7 +189,7 @@ func invokeHookAsync(typ HookType, event handler.HookEvent, hookHandler HookHand
 // If `ok` is true, `res` contains the response as retrieved from the hook.
 // Therefore, a caller should always check `ok` and `err` before assuming that the
 // hook completed successfully.
-func invokeHookSync(typ HookType, event handler.HookEvent, hookHandler HookHandler) (ok bool, res HookResponse, err error) {
+func invokeHookSync(typ HookType, event models.HookEvent, hookHandler HookHandler) (ok bool, res HookResponse, err error) {
 	MetricsHookInvocationsTotal.WithLabelValues(string(typ)).Add(1)
 
 	id := event.Upload.ID
@@ -212,19 +214,20 @@ func invokeHookSync(typ HookType, event handler.HookEvent, hookHandler HookHandl
 }
 
 // NewHandlerWithHooks creates a tusd request handler, whose notifcation channels and callbacks are configured to
-// emit the hooks on the provided hook handler. NewHandlerWithHooks will overwrite the `config.Notify*` and `config.*Callback`
+// emit the hooks on the provided hook models. NewHandlerWithHooks will overwrite the `config.Notify*` and `config.*Callback`
 // fields depending on the enabled hooks. These can be controlled via the `enabledHooks` slice. Non-enabled hooks will
 // not be emitted.
 //
 // If you want to create an UnroutedHandler instead of the routed handler, you can first create a routed handler and then
 // extract an unrouted one:
-//   routedHandler := hooks.NewHandlerWithHooks(...)
-//   unroutedHandler := routedHandler.UnroutedHandler
+//
+//	routedHandler := hooks.NewHandlerWithHooks(...)
+//	unroutedHandler := routedmodels.UnroutedHandler
 //
 // Note: NewHandlerWithHooks sets up a goroutine to consume the notfication channels (CompleteUploads, TerminatedUploads,
-// CreatedUploads, UploadProgress) on the created handler. These channels must not be consumed by the caller or otherwise
-// events might not be passed to the hook handler.
-func NewHandlerWithHooks(config *handler.Config, hookHandler HookHandler, enabledHooks []HookType) (*handler.Handler, error) {
+// CreatedUploads, UploadProgress) on the created models. These channels must not be consumed by the caller or otherwise
+// events might not be passed to the hook models.
+func NewHandlerWithHooks(config *config.Config, hookHandler HookHandler, enabledHooks []HookType) (*handler.Handler, error) {
 	if err := hookHandler.Setup(); err != nil {
 		return nil, fmt.Errorf("unable to setup hooks for handler: %s", err)
 	}
@@ -237,12 +240,12 @@ func NewHandlerWithHooks(config *handler.Config, hookHandler HookHandler, enable
 
 	// Install callbacks for pre-* hooks
 	if slices.Contains(enabledHooks, HookPreCreate) {
-		config.PreUploadCreateCallback = func(event handler.HookEvent) (handler.HTTPResponse, handler.FileInfoChanges, error) {
+		config.PreUploadCreateCallback = func(event models.HookEvent) (models.HTTPResponse, models.FileInfoChanges, error) {
 			return preCreateCallback(event, hookHandler)
 		}
 	}
 	if slices.Contains(enabledHooks, HookPreFinish) {
-		config.PreFinishResponseCallback = func(event handler.HookEvent) (handler.HTTPResponse, error) {
+		config.PreFinishResponseCallback = func(event models.HookEvent) (models.HTTPResponse, error) {
 			return preFinishCallback(event, hookHandler)
 		}
 	}

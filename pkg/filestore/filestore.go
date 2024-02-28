@@ -1,6 +1,6 @@
 // Package filestore provide a storage backend based on the local file system.
 //
-// FileStore is a storage backend used as a handler.DataStore in handler.NewHandler.
+// FileStore is a storage backend used as a models.DataStore in models.Newmodels.
 // It stores the uploads in a directory specified in two different files: The
 // `[id].info` files are used to store the fileinfo in JSON format. The
 // `[id]` files without an extension contain the raw binary data uploaded.
@@ -16,13 +16,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tus/tusd/v2/internal/uid"
-	"github.com/tus/tusd/v2/pkg/handler"
+	"github.com/susufqx/dynamic-bucket-tusd/internal/uid"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/models"
 )
 
 var defaultFilePerm = os.FileMode(0664)
 
-// See the handler.DataStore interface for documentation about the different
+// See the models.DataStore interface for documentation about the different
 // methods.
 type FileStore struct {
 	// Relative or absolute path to store files in. FileStore does not check
@@ -40,14 +40,14 @@ func New(path string) FileStore {
 
 // UseIn sets this store as the core data store in the passed composer and adds
 // all possible extension to it.
-func (store FileStore) UseIn(composer *handler.StoreComposer) {
+func (store FileStore) UseIn(composer *models.StoreComposer) {
 	composer.UseCore(store)
 	composer.UseTerminater(store)
 	composer.UseConcater(store)
 	composer.UseLengthDeferrer(store)
 }
 
-func (store FileStore) NewUpload(ctx context.Context, info handler.FileInfo) (handler.Upload, error) {
+func (store FileStore) NewUpload(ctx context.Context, info models.FileInfo) (models.Upload, error) {
 	if info.ID == "" {
 		info.ID = uid.Uid()
 	}
@@ -85,13 +85,13 @@ func (store FileStore) NewUpload(ctx context.Context, info handler.FileInfo) (ha
 	return upload, nil
 }
 
-func (store FileStore) GetUpload(ctx context.Context, id string) (handler.Upload, error) {
-	info := handler.FileInfo{}
+func (store FileStore) GetUpload(ctx context.Context, id string) (models.Upload, error) {
+	info := models.FileInfo{}
 	data, err := os.ReadFile(store.infoPath(id))
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Interpret os.ErrNotExist as 404 Not Found
-			err = handler.ErrNotFound
+			err = models.ErrNotFound
 		}
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (store FileStore) GetUpload(ctx context.Context, id string) (handler.Upload
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Interpret os.ErrNotExist as 404 Not Found
-			err = handler.ErrNotFound
+			err = models.ErrNotFound
 		}
 		return nil, err
 	}
@@ -119,15 +119,15 @@ func (store FileStore) GetUpload(ctx context.Context, id string) (handler.Upload
 	}, nil
 }
 
-func (store FileStore) AsTerminatableUpload(upload handler.Upload) handler.TerminatableUpload {
+func (store FileStore) AsTerminatableUpload(upload models.Upload) models.TerminatableUpload {
 	return upload.(*fileUpload)
 }
 
-func (store FileStore) AsLengthDeclarableUpload(upload handler.Upload) handler.LengthDeclarableUpload {
+func (store FileStore) AsLengthDeclarableUpload(upload models.Upload) models.LengthDeclarableUpload {
 	return upload.(*fileUpload)
 }
 
-func (store FileStore) AsConcatableUpload(upload handler.Upload) handler.ConcatableUpload {
+func (store FileStore) AsConcatableUpload(upload models.Upload) models.ConcatableUpload {
 	return upload.(*fileUpload)
 }
 
@@ -143,14 +143,14 @@ func (store FileStore) infoPath(id string) string {
 
 type fileUpload struct {
 	// info stores the current information about the upload
-	info handler.FileInfo
+	info models.FileInfo
 	// infoPath is the path to the .info file
 	infoPath string
 	// binPath is the path to the binary file (which has no extension)
 	binPath string
 }
 
-func (upload *fileUpload) GetInfo(ctx context.Context) (handler.FileInfo, error) {
+func (upload *fileUpload) GetInfo(ctx context.Context) (models.FileInfo, error) {
 	return upload.info, nil
 }
 
@@ -186,7 +186,7 @@ func (upload *fileUpload) Terminate(ctx context.Context) error {
 	return nil
 }
 
-func (upload *fileUpload) ConcatUploads(ctx context.Context, uploads []handler.Upload) (err error) {
+func (upload *fileUpload) ConcatUploads(ctx context.Context, uploads []models.Upload) (err error) {
 	file, err := os.OpenFile(upload.binPath, os.O_WRONLY|os.O_APPEND, defaultFilePerm)
 	if err != nil {
 		return err

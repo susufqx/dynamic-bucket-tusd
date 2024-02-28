@@ -84,9 +84,9 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/tus/tusd/v2/internal/semaphore"
-	"github.com/tus/tusd/v2/internal/uid"
-	"github.com/tus/tusd/v2/pkg/handler"
+	"github.com/susufqx/dynamic-bucket-tusd/internal/semaphore"
+	"github.com/susufqx/dynamic-bucket-tusd/internal/uid"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/models"
 	"golang.org/x/exp/slices"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -256,7 +256,7 @@ func (store *S3Store) SetConcurrentPartUploads(limit int) {
 
 // UseIn sets this store as the core data store in the passed composer and adds
 // all possible extension to it.
-func (store S3Store) UseIn(composer *handler.StoreComposer) {
+func (store S3Store) UseIn(composer *models.StoreComposer) {
 	composer.UseCore(store)
 	composer.UseTerminater(store)
 	composer.UseConcater(store)
@@ -288,7 +288,7 @@ type s3Upload struct {
 	// info stores the upload's current FileInfo struct. It may be nil if it hasn't
 	// been fetched yet from S3. Never read or write to it directly but instead use
 	// the GetInfo and writeInfo functions.
-	info *handler.FileInfo
+	info *models.FileInfo
 
 	// parts collects all parts for this upload. It will be nil if info is nil as well.
 	parts []*s3Part
@@ -303,7 +303,7 @@ type s3Part struct {
 	etag   string
 }
 
-func (store S3Store) NewUpload(ctx context.Context, info handler.FileInfo) (handler.Upload, error) {
+func (store S3Store) NewUpload(ctx context.Context, info models.FileInfo) (models.Upload, error) {
 	// an upload larger than MaxObjectSize must throw an error
 	if info.Size > store.MaxObjectSize {
 		return nil, fmt.Errorf("s3store: upload size of %v bytes exceeds MaxObjectSize of %v bytes", info.Size, store.MaxObjectSize)
@@ -353,29 +353,29 @@ func (store S3Store) NewUpload(ctx context.Context, info handler.FileInfo) (hand
 	return upload, nil
 }
 
-func (store S3Store) GetUpload(ctx context.Context, id string) (handler.Upload, error) {
+func (store S3Store) GetUpload(ctx context.Context, id string) (models.Upload, error) {
 	objectId, multipartId := splitIds(id)
 	if objectId == "" || multipartId == "" {
 		// If one of them is empty, it cannot be a valid ID.
-		return nil, handler.ErrNotFound
+		return nil, models.ErrNotFound
 	}
 
 	return &s3Upload{objectId, multipartId, &store, nil, []*s3Part{}, 0}, nil
 }
 
-func (store S3Store) AsTerminatableUpload(upload handler.Upload) handler.TerminatableUpload {
+func (store S3Store) AsTerminatableUpload(upload models.Upload) models.TerminatableUpload {
 	return upload.(*s3Upload)
 }
 
-func (store S3Store) AsLengthDeclarableUpload(upload handler.Upload) handler.LengthDeclarableUpload {
+func (store S3Store) AsLengthDeclarableUpload(upload models.Upload) models.LengthDeclarableUpload {
 	return upload.(*s3Upload)
 }
 
-func (store S3Store) AsConcatableUpload(upload handler.Upload) handler.ConcatableUpload {
+func (store S3Store) AsConcatableUpload(upload models.Upload) models.ConcatableUpload {
 	return upload.(*s3Upload)
 }
 
-func (upload *s3Upload) writeInfo(ctx context.Context, info handler.FileInfo) error {
+func (upload *s3Upload) writeInfo(ctx context.Context, info models.FileInfo) error {
 	store := upload.store
 
 	upload.info = &info
@@ -607,12 +607,12 @@ func (upload *s3Upload) putPartForUpload(ctx context.Context, uploadPartInput *s
 	}
 }
 
-func (upload *s3Upload) GetInfo(ctx context.Context) (info handler.FileInfo, err error) {
+func (upload *s3Upload) GetInfo(ctx context.Context) (info models.FileInfo, err error) {
 	info, _, _, err = upload.getInternalInfo(ctx)
 	return info, err
 }
 
-func (upload *s3Upload) getInternalInfo(ctx context.Context) (info handler.FileInfo, parts []*s3Part, incompletePartSize int64, err error) {
+func (upload *s3Upload) getInternalInfo(ctx context.Context) (info models.FileInfo, parts []*s3Part, incompletePartSize int64, err error) {
 	if upload.info != nil {
 		return *upload.info, upload.parts, upload.incompletePartSize, nil
 	}
@@ -628,7 +628,7 @@ func (upload *s3Upload) getInternalInfo(ctx context.Context) (info handler.FileI
 	return info, parts, incompletePartSize, nil
 }
 
-func (upload s3Upload) fetchInfo(ctx context.Context) (info handler.FileInfo, parts []*s3Part, incompletePartSize int64, err error) {
+func (upload s3Upload) fetchInfo(ctx context.Context) (info models.FileInfo, parts []*s3Part, incompletePartSize int64, err error) {
 	store := upload.store
 
 	var wg sync.WaitGroup
@@ -677,7 +677,7 @@ func (upload s3Upload) fetchInfo(ctx context.Context) (info handler.FileInfo, pa
 		err = infoErr
 		// If the info file is not found, we consider the upload to be non-existant
 		if isAwsError[*types.NoSuchKey](err) {
-			err = handler.ErrNotFound
+			err = models.ErrNotFound
 		}
 		return
 	}
@@ -747,7 +747,7 @@ func (upload s3Upload) GetReader(ctx context.Context) (io.ReadCloser, error) {
 	})
 	if err == nil {
 		// The multipart upload still exists, which means we cannot download it yet
-		return nil, handler.NewError("ERR_INCOMPLETE_UPLOAD", "cannot stream non-finished upload", http.StatusBadRequest)
+		return nil, models.NewError("ERR_INCOMPLETE_UPLOAD", "cannot stream non-finished upload", http.StatusBadRequest)
 	}
 
 	// The AWS Go SDK v2 has a bug where types.NoSuchUpload is not returned,
@@ -755,7 +755,7 @@ func (upload s3Upload) GetReader(ctx context.Context) (io.ReadCloser, error) {
 	// See https://github.com/aws/aws-sdk-go-v2/issues/1635
 	if isAwsError[*types.NoSuchUpload](err) || isAwsErrorCode(err, "NoSuchUpload") {
 		// Neither the object nor the multipart upload exists, so we return a 404
-		return nil, handler.ErrNotFound
+		return nil, models.ErrNotFound
 	}
 
 	return nil, err
@@ -884,7 +884,7 @@ func (upload s3Upload) FinishUpload(ctx context.Context) error {
 	return err
 }
 
-func (upload *s3Upload) ConcatUploads(ctx context.Context, partialUploads []handler.Upload) error {
+func (upload *s3Upload) ConcatUploads(ctx context.Context, partialUploads []models.Upload) error {
 	hasSmallPart := false
 	for _, partialUpload := range partialUploads {
 		info, err := partialUpload.GetInfo(ctx)
@@ -908,7 +908,7 @@ func (upload *s3Upload) ConcatUploads(ctx context.Context, partialUploads []hand
 	}
 }
 
-func (upload *s3Upload) concatUsingDownload(ctx context.Context, partialUploads []handler.Upload) error {
+func (upload *s3Upload) concatUsingDownload(ctx context.Context, partialUploads []models.Upload) error {
 	store := upload.store
 
 	// Create a temporary file for holding the concatenated data
@@ -964,7 +964,7 @@ func (upload *s3Upload) concatUsingDownload(ctx context.Context, partialUploads 
 	return nil
 }
 
-func (upload *s3Upload) concatUsingMultipart(ctx context.Context, partialUploads []handler.Upload) error {
+func (upload *s3Upload) concatUsingMultipart(ctx context.Context, partialUploads []models.Upload) error {
 	store := upload.store
 
 	numPartialUploads := len(partialUploads)

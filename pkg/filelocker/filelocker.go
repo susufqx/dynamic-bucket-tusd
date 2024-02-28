@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tus/tusd/v2/pkg/handler"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/models"
 
 	"github.com/tus/lockfile"
 )
@@ -54,11 +54,11 @@ func New(path string) FileLocker {
 }
 
 // UseIn adds this locker to the passed composer.
-func (locker FileLocker) UseIn(composer *handler.StoreComposer) {
+func (locker FileLocker) UseIn(composer *models.StoreComposer) {
 	composer.UseLocker(locker)
 }
 
-func (locker FileLocker) NewLock(id string) (handler.Lock, error) {
+func (locker FileLocker) NewLock(id string) (models.Lock, error) {
 	path, err := filepath.Abs(filepath.Join(locker.Path, id+".lock"))
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (lock fileUploadLock) Lock(ctx context.Context, requestRelease func()) erro
 			// and retry.
 			select {
 			case <-ctx.Done():
-				return handler.ErrLockTimeout
+				return models.ErrLockTimeout
 			case <-time.After(10 * time.Millisecond):
 				continue
 			}
@@ -120,7 +120,7 @@ func (lock fileUploadLock) Lock(ctx context.Context, requestRelease func()) erro
 		select {
 		case <-ctx.Done():
 			// Context expired, so we return a timeout
-			return handler.ErrLockTimeout
+			return models.ErrLockTimeout
 		case <-time.After(lock.acquirerPollInterval):
 			// Continue with the next attempt after a short delay
 			continue

@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/tus/tusd/v2/pkg/hooks"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/hooks"
 )
 
 type PluginHook struct {

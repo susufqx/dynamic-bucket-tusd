@@ -14,7 +14,7 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/tus/tusd/v2/pkg/hooks"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/hooks"
 )
 
 type FileHook struct {

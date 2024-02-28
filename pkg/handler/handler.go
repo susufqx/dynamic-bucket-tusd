@@ -1,9 +1,17 @@
+/*
+ * @Author: rui.li
+ * @Date: 2024-02-27 17:49:17
+ * @LastEditors: rui.li
+ * @LastEditTime: 2024-02-28 14:24:50
+ * @FilePath: /DynamicBucketTusd/pkg/handler/handler.go
+ */
 package handler
 
 import (
 	"net/http"
 
 	"github.com/bmizerany/pat"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/config"
 )
 
 // Handler is a ready to use handler with routing (using pat)
@@ -19,8 +27,8 @@ type Handler struct {
 // your existing router (aka mux) directly. It also allows the GET and DELETE
 // endpoints to be customized. These are not part of the protocol so can be
 // changed depending on your needs.
-func NewHandler(config Config) (*Handler, error) {
-	if err := config.validate(); err != nil {
+func NewHandler(config config.Config) (*Handler, error) {
+	if err := config.Validate(); err != nil {
 		return nil, err
 	}
 

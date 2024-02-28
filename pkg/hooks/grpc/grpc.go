@@ -1,6 +1,6 @@
 // Package grpc implements a gRPC-based hook system. For each hook event, the InvokeHook
 // procedure is invoked with additional details about the hook type, upload and request.
-// The Protocol Buffers are defined in github.com/tus/tusd/v2/pkg/hooks/grpc/proto/hook.proto.
+// The Protocol Buffers are defined in github.com/susufqx/dynamic-bucket-tusd/pkg/hooks/grpc/proto/hook.proto.
 package grpc
 
 import (
@@ -9,8 +9,8 @@ import (
 	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	"github.com/tus/tusd/v2/pkg/hooks"
-	pb "github.com/tus/tusd/v2/pkg/hooks/grpc/proto"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/hooks"
+	pb "github.com/susufqx/dynamic-bucket-tusd/pkg/hooks/grpc/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

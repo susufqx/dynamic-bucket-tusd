@@ -19,7 +19,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/tus/tusd/v2/pkg/handler"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/models"
 )
 
 // MemoryLocker persists locks using memory and therefore allowing a simple and
@@ -43,11 +43,11 @@ func New() *MemoryLocker {
 }
 
 // UseIn adds this locker to the passed composer.
-func (locker *MemoryLocker) UseIn(composer *handler.StoreComposer) {
+func (locker *MemoryLocker) UseIn(composer *models.StoreComposer) {
 	composer.UseLocker(locker)
 }
 
-func (locker *MemoryLocker) NewLock(id string) (handler.Lock, error) {
+func (locker *MemoryLocker) NewLock(id string) (models.Lock, error) {
 	return memoryLock{locker, id}, nil
 }
 
@@ -67,7 +67,7 @@ requestRelease:
 		entry.requestRelease()
 		select {
 		case <-ctx.Done():
-			return handler.ErrLockTimeout
+			return models.ErrLockTimeout
 		case <-entry.lockReleased:
 		}
 	}

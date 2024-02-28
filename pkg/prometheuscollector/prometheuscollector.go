@@ -12,9 +12,8 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.com/tus/tusd/v2/pkg/handler"
-
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/susufqx/dynamic-bucket-tusd/pkg/models"
 )
 
 var (
@@ -45,11 +44,11 @@ var (
 )
 
 type Collector struct {
-	metrics handler.Metrics
+	metrics models.Metrics
 }
 
 // New creates a new collector which read froms the provided Metrics struct.
-func New(metrics handler.Metrics) Collector {
+func New(metrics models.Metrics) Collector {
 	return Collector{
 		metrics: metrics,
 	}
