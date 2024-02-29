@@ -881,6 +881,12 @@ func (upload s3Upload) FinishUpload(ctx context.Context) error {
 	})
 	store.observeRequestDuration(t, metricCompleteMultipartUpload)
 
+	// delete the info file
+	_, err = store.Service.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(store.Bucket),
+		Key:    store.metadataKeyWithPrefix(upload.objectId + ".info"),
+	})
+
 	return err
 }
 
