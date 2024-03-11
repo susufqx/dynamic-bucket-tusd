@@ -13,6 +13,7 @@ import (
 
 // Config provides a way to configure the Handler depending on your needs.
 type Config struct {
+	Region   string
 	S3Key    string
 	S3Secret string
 	Service  *s3.Client

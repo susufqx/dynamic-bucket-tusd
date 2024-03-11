@@ -227,7 +227,7 @@ func (handler *UnroutedHandler) PostFile(w http.ResponseWriter, r *http.Request)
 	s3c := handler.config.Service
 	if endpoint != "" {
 		s3c = s3.New(s3.Options{
-			Region: "",
+			Region: handler.config.Region,
 			Credentials: aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
 				handler.config.S3Key,
 				handler.config.S3Secret,
@@ -575,7 +575,7 @@ func (handler *UnroutedHandler) HeadFile(w http.ResponseWriter, r *http.Request)
 	s3c := handler.config.Service
 	if endpoint != "" {
 		s3c = s3.New(s3.Options{
-			Region: "",
+			Region: handler.config.Region,
 			Credentials: aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
 				handler.config.S3Key,
 				handler.config.S3Secret,
@@ -684,7 +684,7 @@ func (handler *UnroutedHandler) PatchFile(w http.ResponseWriter, r *http.Request
 	s3c := handler.config.Service
 	if endpoint != "" {
 		s3c = s3.New(s3.Options{
-			Region: "",
+			Region: handler.config.Region,
 			Credentials: aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
 				handler.config.S3Key,
 				handler.config.S3Secret,
@@ -984,7 +984,7 @@ func (handler *UnroutedHandler) GetFile(w http.ResponseWriter, r *http.Request) 
 	s3c := handler.config.Service
 	if endpoint != "" {
 		s3c = s3.New(s3.Options{
-			Region: "",
+			Region: handler.config.Region,
 			Credentials: aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
 				handler.config.S3Key,
 				handler.config.S3Secret,
@@ -1130,7 +1130,7 @@ func (handler *UnroutedHandler) DelFile(w http.ResponseWriter, r *http.Request) 
 	s3c := handler.config.Service
 	if endpoint != "" {
 		s3c = s3.New(s3.Options{
-			Region: "",
+			Region: handler.config.Region,
 			Credentials: aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
 				handler.config.S3Key,
 				handler.config.S3Secret,
